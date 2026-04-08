@@ -1,6 +1,8 @@
 package destination
 
 import (
+	"errors"
+	"slices"
 	req "strbagus/travel-agent/pkg/request"
 	res "strbagus/travel-agent/pkg/response"
 
@@ -15,11 +17,14 @@ func ListDestination(c fiber.Ctx) error {
 		return res.Error(c, fiber.StatusBadRequest, "Format parameter salah", err.Error())
 	}
 	wlColumn := [...]string{"id", "name", "created_at", "updated_at"}
-	f.SetDefaults("created_at", "desc", wlColumn[:])
+	f.SetDefaults("created_at", "desc")
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(f); err != nil {
 		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi parameter gagal", err.Error())
+	}
+	if !slices.Contains(wlColumn[:], f.OrderBy) {
+		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi parameter gagal", errors.New("Error:Field validation for 'OrderBy'. can't use column '"+f.OrderBy+"' as order by").Error())
 	}
 
 	list, meta, err := GetListDestination(c.Context(), f)
