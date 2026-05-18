@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/strbagus/gof-gallery/internal/database"
+	"github.com/strbagus/gof-gallery/router"
 	"log"
 	"os"
-	"strbagus/travel-agent/internal/database"
-	"strbagus/travel-agent/router"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -25,7 +25,7 @@ func main() {
 	app := fiber.New(fiber.Config{})
 
 	app.Use(cors.New(cors.Config{
-    AllowOrigins: []string{"http://localhost", "http://127.0.0.1"},
+		AllowOrigins: []string{"http://localhost", "http://127.0.0.1"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders: []string{
 			"Origin",

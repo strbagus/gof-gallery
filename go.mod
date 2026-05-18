@@ -1,4 +1,4 @@
-module strbagus/travel-agent
+module github.com/strbagus/gof-gallery
 
 go 1.25.6
 

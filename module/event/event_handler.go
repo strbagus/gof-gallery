@@ -1,22 +1,22 @@
-package destination
+package event
 
 import (
 	"errors"
 	"slices"
-	req "strbagus/travel-agent/pkg/request"
-	res "strbagus/travel-agent/pkg/response"
+	req "github.com/strbagus/gof-gallery/pkg/request"
+	res "github.com/strbagus/gof-gallery/pkg/response"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
 
-func ListDestination(c fiber.Ctx) error {
+func ListEvent(c fiber.Ctx) error {
 	f := new(req.Pagination)
 
 	if err := c.Bind().Query(f); err != nil {
 		return res.Error(c, fiber.StatusBadRequest, "Format parameter salah", err.Error())
 	}
-	wlColumn := [...]string{"id", "name", "created_at", "updated_at"}
+	wlColumn := [...]string{"id", "name", "slug", "created_at"}
 	f.SetDefaults("created_at", "desc")
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -27,7 +27,7 @@ func ListDestination(c fiber.Ctx) error {
 		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi parameter gagal", errors.New("Error:Field validation for 'OrderBy'. can't use column '"+f.OrderBy+"' as order by").Error())
 	}
 
-	list, meta, err := GetListDestination(c.Context(), f)
+	list, meta, err := GetListEvent(c.Context(), f)
 
 	if err != nil {
 		return res.Error(c, fiber.StatusInternalServerError, "Terjadi kesalahan saat melakukan query", err.Error())
