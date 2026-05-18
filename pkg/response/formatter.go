@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func Success(c fiber.Ctx, message string, data any, meta Metadata) error {
+func Success(c fiber.Ctx, message string, data any, meta *Metadata) error {
 	return c.Status(fiber.StatusOK).JSON(JSONResponse{
 		Status:   "success",
 		Message:  message,

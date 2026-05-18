@@ -33,5 +33,25 @@ func ListPhoto(c fiber.Ctx) error {
 		return res.Error(c, fiber.StatusInternalServerError, "Terjadi kesalahan saat melakukan query", err.Error())
 	}
 
-	return res.Success(c, "Berhasil mendapatkan data", list, meta)
+	return res.Success(c, "Berhasil mendapatkan data", list, &meta)
 }
+
+func AddPhoto(c fiber.Ctx) error {
+	reqBody := new(CreatePhotoReq)
+
+	if err := c.Bind().JSON(reqBody); err != nil {
+		return res.Error(c, fiber.StatusBadRequest, "Format body salah", err.Error())
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(reqBody); err != nil {
+		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi data gagal", err.Error())
+	}
+
+	if err := CreatePhoto(c.Context(), reqBody); err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal menambahkan foto", err.Error())
+	}
+
+	return res.Success(c, "Berhasil menambahkan foto", nil, nil)
+}
+

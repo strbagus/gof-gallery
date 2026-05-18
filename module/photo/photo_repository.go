@@ -87,3 +87,23 @@ func GetListPhoto(ctx context.Context, param *req.Pagination) ([]Photo, res.Meta
 
 	return result, meta, nil
 }
+
+func CreatePhoto(ctx context.Context, req *CreatePhotoReq) error {
+	var eventID int
+	err := database.PgxPool.QueryRow(ctx, "select id from public.events where slug = $1", req.EventSlug).Scan(&eventID)
+	if err != nil {
+		return fmt.Errorf("event with slug %s not found: %w", req.EventSlug, err)
+	}
+
+	previewsJSON, err := json.Marshal(req.Previews)
+	if err != nil {
+		return err
+	}
+
+	_, err = database.PgxPool.Exec(ctx, `
+		insert into public.photos (event_id, event_slug, filename, original_url, previews, created_at)
+		values ($1, $2, $3, $4, $5, now())
+	`, eventID, req.EventSlug, req.Filename, req.OriginalURL, previewsJSON)
+
+	return err
+}

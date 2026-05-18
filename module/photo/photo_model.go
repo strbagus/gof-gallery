@@ -12,5 +12,12 @@ type Photo struct {
 	EventSlug   string        `json:"event_slug"`
 	Filename    string        `json:"filename"`
 	OriginalURL string        `json:"original_url"`
-	Previews    PhotoPreviews `json:"previews"` // Maps transparently to JSONB
+	Previews    PhotoPreviews `json:"previews"`
+}
+
+type CreatePhotoReq struct {
+	EventSlug   string        `json:"event_slug" validate:"required"`
+	Filename    string        `json:"filename" validate:"required"`
+	OriginalURL string        `json:"original_url" validate:"required"`
+	Previews    PhotoPreviews `json:"previews" validate:"required"`
 }

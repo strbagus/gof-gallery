@@ -33,5 +33,5 @@ func ListEvent(c fiber.Ctx) error {
 		return res.Error(c, fiber.StatusInternalServerError, "Terjadi kesalahan saat melakukan query", err.Error())
 	}
 
-	return res.Success(c, "Berhasil mendapatkan data", list, meta)
+	return res.Success(c, "Berhasil mendapatkan data", list, &meta)
 }
