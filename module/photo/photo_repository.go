@@ -30,8 +30,7 @@ func GetListPhoto(ctx context.Context, param *req.Pagination) ([]Photo, res.Meta
 			e.slug as event_slug,
 			p.filename,
 			p.original_url,
-			p.previews,
-			count(*) over()
+			p.previews
 		from
 			public.photos p
 		join
