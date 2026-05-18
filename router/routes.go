@@ -1,6 +1,8 @@
 package router
 
 import (
+	"os"
+
 	"github.com/strbagus/gof-gallery/module/event"
 	"github.com/strbagus/gof-gallery/module/photo"
 
@@ -8,6 +10,8 @@ import (
 )
 
 func RegisterRoutes(app *fiber.App) {
-	event.RegisterRoutes(app)
-	photo.RegisterRoutes(app)
+
+	base := app.Group(os.Getenv("BASE_URL"))
+	event.RegisterRoutes(base)
+	photo.RegisterRoutes(base)
 }

@@ -25,7 +25,7 @@ func main() {
 	app := fiber.New(fiber.Config{})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost", "http://127.0.0.1"},
+		AllowOrigins: []string{"http://localhost", "http://127.0.0.1", "http://localhost:3000", "http://127.0.0.1:3000"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders: []string{
 			"Origin",
@@ -37,7 +37,8 @@ func main() {
 
 	router.RegisterRoutes(app)
 
-	app.Get("/", func(c fiber.Ctx) error {
+	base := app.Group(os.Getenv("BASE_URL"))
+	base.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Service up and running.")
 	})
 
