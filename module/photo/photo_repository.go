@@ -2,76 +2,67 @@ package photo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/strbagus/gof-gallery/internal/database"
 	req "github.com/strbagus/gof-gallery/pkg/request"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 )
 
-func GetListPhoto(ctx context.Context, param *req.Pagination) ([]Photo, res.Metadata, error) {
+func GetListPhoto(ctx context.Context, slug string, param *req.Pagination) ([]Photo, res.Metadata, error) {
 	result := make([]Photo, 0)
 	var meta res.Metadata
 
-	whereClause := ""
-	args := []any{param.Limit}
-	argCount := 1
+	whereClause := "where p.event_slug = $1"
+	filterArgs := []any{slug}
 
-	if param.Search != "" {
-		argCount++
-		whereClause += fmt.Sprintf(" and (p.filename ilike $%d or e.name ilike $%d)", argCount, argCount)
-		args = append(args, "%"+param.Search+"%")
-	}
+	limitIdx := len(filterArgs) + 1
+	offsetIdx := len(filterArgs) + 2
 
 	query := fmt.Sprintf(`
 		select
 			p.id,
 			p.event_id,
-			e.slug as event_slug,
+			p.event_slug,
 			p.filename,
-			p.original_url,
-			p.previews
+			p.created_at
 		from
 			public.photos p
-		join
-			public.events e on e.id = p.event_id
 		%s
 		order by p.%v %v
-		limit $1 offset $%d
-	`, whereClause, param.OrderBy, param.OrderDir, argCount+1)
+		limit $%d offset $%d
+	`, whereClause, param.OrderBy, param.OrderDir, limitIdx, offsetIdx)
 
-	offset := (param.Page - 1) * param.Limit
-	args = append(args, offset)
+	mainArgs := append(filterArgs, param.Limit, (param.Page-1)*param.Limit)
 
-	rows, err := database.PgxPool.Query(ctx, query, args...)
+	rows, err := database.PgxPool.Query(ctx, query, mainArgs...)
 	if err != nil {
 		return nil, meta, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var item Photo
-		var previewsJSON []byte
-		if err := rows.Scan(&item.ID, &item.EventID, &item.EventSlug, &item.Filename, &item.OriginalURL, &previewsJSON); err != nil {
+		if err := rows.Scan(
+			&item.ID,
+			&item.EventID,
+			&item.EventSlug,
+			&item.Filename,
+			&item.CreatedAt,
+		); err != nil {
 			return nil, meta, err
-		}
-		if err := json.Unmarshal(previewsJSON, &item.Previews); err != nil {
-			item.Previews = PhotoPreviews{}
 		}
 		result = append(result, item)
 	}
 
-	totalQuery := `
+	totalQuery := fmt.Sprintf(`
 		select
 			count(*)
 		from
 			public.photos p
-		limit 1
-	`
+		%s
+	`, whereClause)
+
 	var totalRecords int
-
-	err = database.PgxPool.QueryRow(ctx, totalQuery).
-		Scan(&totalRecords)
-
+	err = database.PgxPool.QueryRow(ctx, totalQuery, filterArgs...).Scan(&totalRecords)
 	if err != nil {
 		return nil, meta, err
 	}
@@ -94,15 +85,10 @@ func CreatePhoto(ctx context.Context, req *CreatePhotoReq) error {
 		return fmt.Errorf("event with slug %s not found: %w", req.EventSlug, err)
 	}
 
-	previewsJSON, err := json.Marshal(req.Previews)
-	if err != nil {
-		return err
-	}
-
 	_, err = database.PgxPool.Exec(ctx, `
-		insert into public.photos (event_id, event_slug, filename, original_url, previews, created_at)
+		insert into public.photos (event_id, event_slug, filename, created_at)
 		values ($1, $2, $3, $4, $5, now())
-	`, eventID, req.EventSlug, req.Filename, req.OriginalURL, previewsJSON)
+	`, eventID, req.EventSlug, req.Filename)
 
 	return err
 }
