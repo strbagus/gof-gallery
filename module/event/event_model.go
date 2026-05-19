@@ -5,11 +5,11 @@ import (
 )
 
 type Event struct {
-	Name        string    `json:"name" db:"name"`
-	Slug        string    `json:"slug" db:"slug"`
-	Location    *string   `json:"location" db:"location"`
-	Date        *time.Time `json:"date" db:"date"`
-	Description *string   `json:"description" db:"description"`
+	Name        string    `json:"name" db:"name" validate:"required,min=3"`
+	Slug        string    `json:"slug" db:"slug" validate:"required"`
+	Location    *string   `json:"location" db:"location" validate:"omitempty"`
+	Date        *time.Time `json:"date" db:"date" validate:"omitempty"`
+	Description *string   `json:"description" db:"description" validate:"omitempty"`
 	IsPrivate   bool      `json:"is_private" db:"is_private"`
 }
 

@@ -50,3 +50,33 @@ func ListEvent(c fiber.Ctx) error {
 
 	return res.Success(c, "Berhasil mendapatkan data", list, &meta)
 }
+
+// AddEvent handles the creation of a new event.
+// @Summary Create a new event
+// @Description Create a new event with the provided details.
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param request body event.CreateRequest true "Event data"
+// @Success 200 {object} response.JSONResponse "Successfully created event"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Router /events [post]
+func AddEvent(c fiber.Ctx) error {
+	reqBody := new(CreateRequest)
+
+	if err := c.Bind().JSON(reqBody); err != nil {
+		return res.Error(c, fiber.StatusBadRequest, "Format body salah", err.Error())
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(reqBody); err != nil {
+		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi data gagal", err.Error())
+	}
+
+	if err := CreateEvent(c.Context(), reqBody); err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal membuat event", err.Error())
+	}
+
+	return res.Success(c, "Berhasil membuat event", nil, nil)
+}

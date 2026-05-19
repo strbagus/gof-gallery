@@ -88,3 +88,12 @@ func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, 
 
 	return result, meta, nil
 }
+
+func CreateEvent(ctx context.Context, req *CreateRequest) error {
+	_, err := database.PgxPool.Exec(ctx, `
+		insert into public.events (name, slug, location, date, description, is_private, created_at)
+		values ($1, $2, $3, $4, $5, $6, now())
+	`, req.Name, req.Slug, req.Location, req.Date, req.Description, req.IsPrivate)
+
+	return err
+}
