@@ -4,23 +4,39 @@ import (
 	"log"
 	"os"
 
+	"github.com/strbagus/gof-gallery/docs"
 	"github.com/strbagus/gof-gallery/internal/database"
 	"github.com/strbagus/gof-gallery/internal/middleware"
 	"github.com/strbagus/gof-gallery/router"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/joho/godotenv"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func main() {
-
+func init() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Peringatan: Tidak dapat memuat file .env. Menggunakan variabel lingkungan sistem.")
+		log.Println("Peringatan: Tidak dapat memuat file .env. Menggunakan variabel lingkungan sistem.")
 	}
+	docs.SwaggerInfo.Host = os.Getenv("APP_HOST")
+	docs.SwaggerInfo.BasePath = os.Getenv("APP_PATH")
+	docs.SwaggerInfo.Schemes = append(docs.SwaggerInfo.Schemes, os.Getenv("APP_HTTP_SCHEMA"))
+}
+
+// @title Go Gallery API
+// @version 1.0
+// @description API for managing events and photo galleries.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+func main() {
 
 	database.InitPostgres()
 
@@ -42,14 +58,6 @@ func main() {
 	}))
 
 	router.RegisterRoutes(app)
-
-	base := app.Group(os.Getenv("BASE_URL"))
-
-
-	base.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Service up and running.")
-	})
-	base.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {

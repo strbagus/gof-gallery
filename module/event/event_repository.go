@@ -8,70 +8,82 @@ import (
 	res "github.com/strbagus/gof-gallery/pkg/response"
 )
 
-func GetListEvent(ctx context.Context, param *req.Pagination) ([]Event, res.Metadata, error) {
-	result := make([]Event, 0)
+func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, res.Metadata, error) {
+	result := make([]EventResponse, 0)
 	var meta res.Metadata
-	
+
 	whereClause := ""
-	args := []any{param.Limit}
-	argCount := 1
-	
+	filterArgs := []any{}
+
 	if param.Search != "" {
-		argCount++
-		whereClause += fmt.Sprintf(" and (e.name ilike $%d or e.slug ilike $%d)", argCount, argCount)
-		args = append(args, "%"+param.Search+"%")
+		whereClause += " and (e.name ilike $1 or e.slug ilike $1)"
+		filterArgs = append(filterArgs, "%"+param.Search+"%")
 	}
+
+	limitIdx := len(filterArgs) + 1
+	offsetIdx := len(filterArgs) + 2
 
 	query := fmt.Sprintf(`
 		select
 			e.id,
+			e.created_at,
 			e."name",
-			e.slug
+			e.slug,
+			e.location,
+			e.date,
+			e.description,
+			e.is_private
 		from
 			public.events e
-		%s
+		where e.deleted_at is null %s
 		order by e.%v %v
-		limit $1 offset $%d
-	`, whereClause, param.OrderBy, param.OrderDir, argCount+1)
+		limit $%d offset $%d
+	`, whereClause, param.OrderBy, param.OrderDir, limitIdx, offsetIdx)
 
-	offset := (param.Page - 1) * param.Limit
-	args = append(args, offset)
+	mainArgs := append(filterArgs, param.Limit, (param.Page-1)*param.Limit)
 
-	rows, err := database.PgxPool.Query(ctx, query, args...)
+	rows, err := database.PgxPool.Query(ctx, query, mainArgs...)
 	if err != nil {
 		return nil, meta, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var item Event
-		if err := rows.Scan(&item.ID, &item.Name, &item.Slug); err != nil {
+		var item EventResponse
+		if err := rows.Scan(
+			&item.ID,
+			&item.CreatedAt,
+			&item.Name,
+			&item.Slug,
+			&item.Location,
+			&item.Date,
+			&item.Description,
+			&item.IsPrivate,
+		); err != nil {
 			return nil, meta, err
 		}
 		result = append(result, item)
 	}
 
-	totalQuery := `
+	totalQuery := fmt.Sprintf(`
 		select
 			count(*)
 		from
 			public.events e
-		limit 1
-	`
+		where e.deleted_at is null %s
+	`, whereClause)
+
 	var totalRecords int
-
-	err = database.PgxPool.QueryRow(ctx, totalQuery).
-		Scan(&totalRecords)
-
+	err = database.PgxPool.QueryRow(ctx, totalQuery, filterArgs...).Scan(&totalRecords)
 	if err != nil {
 		return nil, meta, err
 	}
 
 	meta = res.Metadata{
-		Total:     totalRecords,
-		Page:      param.Page,
-		Limit:     param.Limit,
-		OrderBy:   param.OrderBy,
-		OrderDir:  param.OrderDir,
+		Total:    totalRecords,
+		Page:     param.Page,
+		Limit:    param.Limit,
+		OrderBy:  param.OrderBy,
+		OrderDir: param.OrderDir,
 	}
 
 	return result, meta, nil

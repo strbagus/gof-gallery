@@ -2,14 +2,29 @@ package event
 
 import (
 	"errors"
-	"slices"
 	req "github.com/strbagus/gof-gallery/pkg/request"
 	res "github.com/strbagus/gof-gallery/pkg/response"
+	"slices"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
 
+// ListEvent handles the listing of events with pagination and search.
+// @Summary List all events
+// @Description Get a paginated list of events with optional search and sorting.
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Number of items per page" default(10)
+// @Param search query string false "Search by name or slug"
+// @Param order_by query string false "Column to order by" default(created_at)
+// @Param order_dir query string false "Order direction (asc/desc)" default(desc)
+// @Success 200 {object} response.JSONResponse{data=[]event.EventResponse,metadata=response.Metadata} "Successfully retrieved events"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Router /events [get]
 func ListEvent(c fiber.Ctx) error {
 	f := new(req.Pagination)
 
