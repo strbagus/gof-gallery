@@ -3,26 +3,31 @@ package photo
 import (
 	"errors"
 	"slices"
+	// "strings"
+
+	// "github.com/strbagus/gof-gallery/module/event"
 	req "github.com/strbagus/gof-gallery/pkg/request"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	// "github.com/golang-jwt/jwt/v5"
 )
 
 // ListPhoto handles listing photos for a specific event slug.
 // @Summary List photos by event slug
-// @Description Get a paginated list of photos associated with an event slug.
+// @Description Get a paginated list of photos associated with an event slug. If the event is private, a valid access key (JWT) must be provided in the Authorization header.
 // @Tags photos
 // @Accept json
 // @Produce json
 // @Param slug path string true "Event Slug"
+// @Param Authorization header string false "JWT access key (Bearer <token>)"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Number of items per page" default(10)
-// @Param order_by query string false "Column to order by" default(created_at)
-// @Param order_dir query string false "Order direction (asc/desc)" default(desc)
 // @Success 200 {object} response.JSONResponse{data=[]photo.Photo,metadata=response.Metadata} "Successfully retrieved photos"
 // @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 401 {object} response.JSONResponse "Unauthorized"
+// @Failure 404 {object} response.JSONResponse "Event not found"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
 // @Router /photos/{slug} [get]
 func ListPhoto(c fiber.Ctx) error {
@@ -30,6 +35,41 @@ func ListPhoto(c fiber.Ctx) error {
 	if slug == "" {
 		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
 	}
+
+	/* // Check if event is private and get salt
+	salt, isPrivate, err := event.GetEventSaltBySlug(c.Context(), slug)
+	if err != nil {
+		return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
+	}
+
+	if isPrivate {
+		authHeader := c.Get("Authorization")
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+		if tokenString == "" {
+			return res.Error(c, fiber.StatusUnauthorized, "Event ini privat, silakan masukkan access key", nil)
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("Unexpected signing method")
+			}
+			return []byte(salt), nil
+		})
+
+		if err != nil || !token.Valid {
+			return res.Error(c, fiber.StatusUnauthorized, "Access key tidak valid", nil)
+		}
+
+		// Optionally check if the token belongs to this slug
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if claims["slug"] != slug {
+				return res.Error(c, fiber.StatusUnauthorized, "Access key tidak valid untuk event ini", nil)
+			}
+		} else {
+			return res.Error(c, fiber.StatusUnauthorized, "Claims tidak valid", nil)
+		}
+	} */
 
 	f := new(req.Pagination)
 

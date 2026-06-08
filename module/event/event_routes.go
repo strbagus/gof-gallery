@@ -6,4 +6,5 @@ func RegisterRoutes(router fiber.Router) {
 	app := router.Group("/events")
 	app.Get("/", ListEvent)
 	app.Post("/", AddEvent)
+	app.Post("/:slug/access-key", GenerateAccessKey)
 }

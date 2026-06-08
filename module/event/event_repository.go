@@ -32,7 +32,9 @@ func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, 
 			e.location,
 			e.date,
 			e.description,
-			e.is_private
+			e.is_private,
+			(select count(*) from public.photos p where p.event_id = e.id) as total_photos,
+			(select p.preview from public.photos p where p.event_id = e.id order by p.created_at asc limit 1) as thumbnail
 		from
 			public.events e
 		where e.deleted_at is null %s
@@ -58,6 +60,8 @@ func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, 
 			&item.Date,
 			&item.Description,
 			&item.IsPrivate,
+			&item.TotalPhotos,
+			&item.Thumbnail,
 		); err != nil {
 			return nil, meta, err
 		}
@@ -82,8 +86,8 @@ func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, 
 		Total:    totalRecords,
 		Page:     param.Page,
 		Limit:    param.Limit,
-		OrderBy:  param.OrderBy,
-		OrderDir: param.OrderDir,
+		OrderBy:  &param.OrderBy,
+		OrderDir: &param.OrderDir,
 	}
 
 	return result, meta, nil
@@ -96,4 +100,14 @@ func CreateEvent(ctx context.Context, req *CreateRequest) error {
 	`, req.Name, req.Slug, req.Location, req.Date, req.Description, req.IsPrivate)
 
 	return err
+}
+
+func GetEventSaltBySlug(ctx context.Context, slug string) (string, bool, error) {
+	var salt string
+	var isPrivate bool
+	err := database.PgxPool.QueryRow(ctx, "select salt, is_private from public.events where slug = $1 and deleted_at is null", slug).Scan(&salt, &isPrivate)
+	if err != nil {
+		return "", false, err
+	}
+	return salt, isPrivate, nil
 }
