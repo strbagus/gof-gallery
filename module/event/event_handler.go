@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 // ListEvent handles the listing of events with pagination and search.
@@ -126,4 +127,33 @@ func GenerateAccessKey(c fiber.Ctx) error {
 	}
 
 	return res.Success(c, "Berhasil generate access key", AccessKeyResponse{AccessKey: tokenString}, nil)
+}
+
+// GetEventDetail handles getting a single event by its slug.
+// @Summary Get event by slug
+// @Description Get detailed information of a specific event using its slug.
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param slug path string true "Event Slug"
+// @Success 200 {object} response.JSONResponse{data=event.EventDetailResponse} "Successfully retrieved event"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 404 {object} response.JSONResponse "Event not found"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Router /events/{slug} [get]
+func GetEventDetail(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
+	}
+
+	item, err := GetEventBySlug(c.Context(), slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
+		}
+		return res.Error(c, fiber.StatusInternalServerError, "Terjadi kesalahan saat mengambil data event", err.Error())
+	}
+
+	return res.Success(c, "Berhasil mendapatkan data event", item, nil)
 }

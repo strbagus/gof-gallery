@@ -111,3 +111,34 @@ func GetEventSaltBySlug(ctx context.Context, slug string) (string, bool, error) 
 	}
 	return salt, isPrivate, nil
 }
+
+func GetEventBySlug(ctx context.Context, slug string) (EventDetailResponse, error) {
+	var item EventDetailResponse
+	query := `
+		select
+			e.id,
+			e.created_at,
+			e."name",
+			e.slug,
+			e.location,
+			e.date,
+			e.description,
+			e.is_private,
+			(select count(*) from public.photos p where p.event_id = e.id) as total_photos
+		from
+			public.events e
+		where e.slug = $1 and e.deleted_at is null
+	`
+	err := database.PgxPool.QueryRow(ctx, query, slug).Scan(
+		&item.ID,
+		&item.CreatedAt,
+		&item.Name,
+		&item.Slug,
+		&item.Location,
+		&item.Date,
+		&item.Description,
+		&item.IsPrivate,
+		&item.TotalPhotos,
+	)
+	return item, err
+}

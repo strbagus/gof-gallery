@@ -21,6 +21,13 @@ type EventResponse struct {
 	Event
 }
 
+type EventDetailResponse struct {
+	ID          int       `json:"id" db:"id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	TotalPhotos int       `json:"total_photos"`
+	Event
+}
+
 type CreateRequest struct {
 	Event
 }
