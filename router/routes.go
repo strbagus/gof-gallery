@@ -17,7 +17,9 @@ func RegisterRoutes(app *fiber.App) {
 	base := app.Group(os.Getenv("APP_PATH"))
 
 	if os.Getenv("APP_ENV") != "production" {
-		base.Get("/swagger/*", swaggo.HandlerDefault)
+		base.Get("/swagger/*", swaggo.New(swaggo.Config{
+			WithCredentials: true,
+		}))
 	}
 
 	base.Get("/", func(c fiber.Ctx) error {

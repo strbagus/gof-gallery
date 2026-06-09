@@ -36,19 +36,26 @@ func init() {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name access_token
+
 func main() {
 
 	database.InitPostgres()
 
 	defer database.ClosePostgres()
 
+	middleware.InitUniAuth()
+
 	app := fiber.New(fiber.Config{})
 
 	app.Use(middleware.Prometheus)
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost", "http://127.0.0.1", "http://localhost:3000", "http://127.0.0.1:3000"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE"},
+		AllowOrigins:     []string{"http://localhost", "http://127.0.0.1", "http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowCredentials: true,
 		AllowHeaders: []string{
 			"Origin",
 			"Content-Type",
