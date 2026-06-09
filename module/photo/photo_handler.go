@@ -106,6 +106,7 @@ func ListPhoto(c fiber.Ctx) error {
 // @Success 200 {object} response.JSONResponse "Successfully added photo"
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
 // @Router /photos [post]
 func AddPhoto(c fiber.Ctx) error {
 	reqBody := new(CreatePhotoReq)

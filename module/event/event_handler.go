@@ -65,6 +65,7 @@ func ListEvent(c fiber.Ctx) error {
 // @Success 200 {object} response.JSONResponse "Successfully created event"
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
 // @Router /events [post]
 func AddEvent(c fiber.Ctx) error {
 	reqBody := new(CreateRequest)
@@ -96,6 +97,7 @@ func AddEvent(c fiber.Ctx) error {
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 404 {object} response.JSONResponse "Event not found"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
 // @Router /events/{slug} [get]
 func GetEventDetail(c fiber.Ctx) error {
 	slug := c.Params("slug")
@@ -245,6 +247,7 @@ func RevokeToken(c fiber.Ctx) error {
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 404 {object} response.JSONResponse "Event not found"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
 // @Router /events/{slug} [put]
 func UpdateEvent(c fiber.Ctx) error {
 	slug := c.Params("slug")
@@ -289,6 +292,7 @@ func UpdateEvent(c fiber.Ctx) error {
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 404 {object} response.JSONResponse "Event not found"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
 // @Router /events/{slug} [delete]
 func DeleteEvent(c fiber.Ctx) error {
 	slug := c.Params("slug")

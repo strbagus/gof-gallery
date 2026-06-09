@@ -8,12 +8,14 @@ import (
 func RegisterRoutes(router fiber.Router) {
 	app := router.Group("/events")
 	app.Get("/", ListEvent)
-	app.Get("/:slug", GetEventDetail)
-	app.Post("/", AddEvent)
-	app.Put("/:slug", UpdateEvent)
-	app.Delete("/:slug", DeleteEvent)
 
-	token := app.Group("/:slug/tokens", middleware.AdminMiddleware)
+	protected := app.Group("/", middleware.AdminMiddleware)
+	protected.Get("/:slug", GetEventDetail)
+	protected.Post("/", AddEvent)
+	protected.Put("/:slug", UpdateEvent)
+	protected.Delete("/:slug", DeleteEvent)
+
+	token := protected.Group("/:slug/tokens", middleware.AdminMiddleware)
 	token.Post("/", GenerateToken)
 	token.Get("/", ListTokens)
 	token.Delete("/:token", RevokeToken)
