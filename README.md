@@ -12,7 +12,7 @@ A high-performance, scalable web gallery backend built with Go, following the Mo
 - **Validation:** [validator/v10](https://github.com/go-playground/validator)
 - **API Documentation:** [Swagger (swaggo)](https://github.com/swaggo/swag)
 - **Monitoring:** [Prometheus](https://prometheus.io/) (via Fiber middleware)
-- **Authentication:** [UniAuth SSO Client](https://github.com/strbagus/uniauth) (Asymmetric RS256 signature verification, auto refresh token rotation, and fallback key resolution for kid-less JWTs)
+- **Authentication:** [UniAuth SSO Client](https://github.com/strbagus/uniauth)(Private) (Asymmetric RS256 signature verification, auto refresh token rotation, and fallback key resolution for kid-less JWTs)
 
 ## 📁 Project Structure
 
@@ -143,4 +143,4 @@ swag init
 
 ## 📜 License
 
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
