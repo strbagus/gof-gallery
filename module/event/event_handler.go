@@ -85,25 +85,6 @@ func AddEvent(c fiber.Ctx) error {
 	return res.Success(c, "Berhasil membuat event", nil, nil)
 }
 
-// GenerateAccessKey generates a JWT access key for a private event using its salt.
-// @Summary Generate access key for private event
-// @Description Authenticate access to a private event and return a JWT access key signed with the event's salt.
-// @Tags events
-// @Accept json
-// @Produce json
-// @Param slug path string true "Event Slug"
-// @Success 200 {object} response.JSONResponse "Successfully generated access key"
-// @Failure 400 {object} response.JSONResponse "Bad request"
-// @Failure 401 {object} response.JSONResponse "Unauthorized"
-// @Failure 404 {object} response.JSONResponse "Event not found"
-// @Failure 500 {object} response.JSONResponse "Internal server error"
-// @Router /events/{slug}/access-key [post]
-func GenerateAccessKey(c fiber.Ctx) error {
-	slug := c.Params("slug")
-
-	return res.Success(c, "Berhasil generate access key", slug, nil)
-}
-
 // GetEventDetail handles getting a single event by its slug.
 // @Summary Get event by slug
 // @Description Get detailed information of a specific event using its slug.
@@ -251,4 +232,84 @@ func RevokeToken(c fiber.Ctx) error {
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// UpdateEvent handles updating an event by its slug.
+// @Summary Update event details
+// @Description Update the properties of an existing event using its current slug.
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param slug path string true "Current Event Slug"
+// @Param request body event.UpdateRequest true "Updated event data"
+// @Success 200 {object} response.JSONResponse "Successfully updated event"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 404 {object} response.JSONResponse "Event not found"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Router /events/{slug} [put]
+func UpdateEvent(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
+	}
+
+	// Verify event exists
+	_, err := GetEventBySlug(c.Context(), slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
+		}
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal memverifikasi event", err.Error())
+	}
+
+	reqBody := new(UpdateRequest)
+	if err := c.Bind().JSON(reqBody); err != nil {
+		return res.Error(c, fiber.StatusBadRequest, "Format body salah", err.Error())
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(reqBody); err != nil {
+		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi data gagal", err.Error())
+	}
+
+	if err := UpdateEventRepo(c.Context(), slug, reqBody); err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal mengupdate event", err.Error())
+	}
+
+	return res.Success(c, "Berhasil mengupdate event", nil, nil)
+}
+
+// DeleteEvent handles soft-deleting an event.
+// @Summary Delete an event
+// @Description Soft-delete an event from the system using its slug.
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param slug path string true "Event Slug"
+// @Success 200 {object} response.JSONResponse "Successfully deleted event"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 404 {object} response.JSONResponse "Event not found"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Router /events/{slug} [delete]
+func DeleteEvent(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
+	}
+
+	// Verify event exists
+	_, err := GetEventBySlug(c.Context(), slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
+		}
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal memverifikasi event", err.Error())
+	}
+
+	if err := DeleteEventRepo(c.Context(), slug); err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal menghapus event", err.Error())
+	}
+
+	return res.Success(c, "Berhasil menghapus event", nil, nil)
+}
+
 

@@ -54,3 +54,13 @@ type GenerateTokenRequest struct {
 	DurationDays int `json:"duration_days" validate:"required,min=1"`
 }
 
+type UpdateRequest struct {
+	Name        string     `json:"name" validate:"required,min=3"`
+	Slug        string     `json:"slug" validate:"required"`
+	Location    *string    `json:"location" validate:"omitempty"`
+	Date        *time.Time `json:"date" validate:"omitempty"`
+	Description *string    `json:"description" validate:"omitempty"`
+	IsPrivate   bool       `json:"is_private"`
+}
+
+

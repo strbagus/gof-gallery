@@ -142,4 +142,52 @@ func TestEventTokensEndpoints(t *testing.T) {
 	if len(tokensListAfter) != 0 {
 		t.Errorf("Expected token list to be empty after delete, got %d items", len(tokensListAfter))
 	}
+
+	// --- Endpoint 4: PUT /events/:slug ---
+	updatePayload := map[string]any{
+		"name":       "Updated Event Name",
+		"slug":       "test-event-token-slug-updated",
+		"location":   "Updated Location",
+		"is_private": false,
+	}
+	updateBytes, _ := json.Marshal(updatePayload)
+	reqUpdate := httptest.NewRequest("PUT", "/events/test-event-token-slug", bytes.NewReader(updateBytes))
+	reqUpdate.Header.Set("Content-Type", "application/json")
+	respUpdate, err := app.Test(reqUpdate)
+	if err != nil {
+		t.Fatalf("PUT request failed: %v", err)
+	}
+	if respUpdate.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", respUpdate.StatusCode)
+	}
+
+	// Verify updated event details
+	updatedEvt, err := event.GetEventBySlug(ctx, "test-event-token-slug-updated")
+	if err != nil {
+		t.Fatalf("Failed to retrieve updated event: %v", err)
+	}
+	if updatedEvt.Name != "Updated Event Name" {
+		t.Errorf("Expected name 'Updated Event Name', got '%s'", updatedEvt.Name)
+	}
+
+	// Clean up using the updated slug later
+	defer func() {
+		_, _ = database.PgxPool.Exec(ctx, "DELETE FROM public.events WHERE slug = $1", "test-event-token-slug-updated")
+	}()
+
+	// --- Endpoint 5: DELETE /events/:slug ---
+	reqDeleteEvt := httptest.NewRequest("DELETE", "/events/test-event-token-slug-updated", nil)
+	respDeleteEvt, err := app.Test(reqDeleteEvt)
+	if err != nil {
+		t.Fatalf("DELETE event request failed: %v", err)
+	}
+	if respDeleteEvt.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", respDeleteEvt.StatusCode)
+	}
+
+	// Verify it is soft deleted (deleted_at is set, GetEventBySlug returns ErrNoRows)
+	_, err = event.GetEventBySlug(ctx, "test-event-token-slug-updated")
+	if err == nil {
+		t.Errorf("Expected event to be soft-deleted and not found, but it was found")
+	}
 }

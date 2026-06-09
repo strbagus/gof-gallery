@@ -10,6 +10,8 @@ func RegisterRoutes(router fiber.Router) {
 	app.Get("/", ListEvent)
 	app.Get("/:slug", GetEventDetail)
 	app.Post("/", AddEvent)
+	app.Put("/:slug", UpdateEvent)
+	app.Delete("/:slug", DeleteEvent)
 
 	token := app.Group("/:slug/tokens", middleware.AdminMiddleware)
 	token.Post("/", GenerateToken)

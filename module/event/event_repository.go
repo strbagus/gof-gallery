@@ -210,3 +210,22 @@ func DeleteEventAccessToken(ctx context.Context, token string) error {
 	return err
 }
 
+func UpdateEventRepo(ctx context.Context, currentSlug string, req *UpdateRequest) error {
+	_, err := database.PgxPool.Exec(ctx, `
+		update public.events
+		set name = $1, slug = $2, location = $3, date = $4, description = $5, is_private = $6
+		where slug = $7 and deleted_at is null
+	`, req.Name, req.Slug, req.Location, req.Date, req.Description, req.IsPrivate, currentSlug)
+	return err
+}
+
+func DeleteEventRepo(ctx context.Context, slug string) error {
+	_, err := database.PgxPool.Exec(ctx, `
+		update public.events
+		set deleted_at = now()
+		where slug = $1 and deleted_at is null
+	`, slug)
+	return err
+}
+
+
