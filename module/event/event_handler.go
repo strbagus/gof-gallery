@@ -1,6 +1,8 @@
 package event
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 	"slices"
@@ -8,7 +10,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -91,8 +92,7 @@ func AddEvent(c fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param slug path string true "Event Slug"
-// @Param request body event.AccessKeyRequest true "Password"
-// @Success 200 {object} response.JSONResponse{data=event.AccessKeyResponse} "Successfully generated access key"
+// @Success 200 {object} response.JSONResponse "Successfully generated access key"
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 401 {object} response.JSONResponse "Unauthorized"
 // @Failure 404 {object} response.JSONResponse "Event not found"
@@ -100,33 +100,8 @@ func AddEvent(c fiber.Ctx) error {
 // @Router /events/{slug}/access-key [post]
 func GenerateAccessKey(c fiber.Ctx) error {
 	slug := c.Params("slug")
-	reqBody := new(AccessKeyRequest)
 
-	if err := c.Bind().JSON(reqBody); err != nil {
-		return res.Error(c, fiber.StatusBadRequest, "Format body salah", err.Error())
-	}
-
-	salt, isPrivate, err := GetEventSaltBySlug(c.Context(), slug)
-	if err != nil {
-		return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
-	}
-
-	if !isPrivate {
-		return res.Error(c, fiber.StatusBadRequest, "Event ini bukan event privat", nil)
-	}
-
-	// For this task, we sign the JWT with the event's unique salt.
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"slug": slug,
-		"exp":  time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(salt))
-	if err != nil {
-		return res.Error(c, fiber.StatusInternalServerError, "Gagal generate access key", err.Error())
-	}
-
-	return res.Success(c, "Berhasil generate access key", AccessKeyResponse{AccessKey: tokenString}, nil)
+	return res.Success(c, "Berhasil generate access key", slug, nil)
 }
 
 // GetEventDetail handles getting a single event by its slug.
@@ -157,3 +132,123 @@ func GetEventDetail(c fiber.Ctx) error {
 
 	return res.Success(c, "Berhasil mendapatkan data event", item, nil)
 }
+
+// GenerateToken handles generating a new event access token.
+// @Summary Generate event access token
+// @Description Generate a secure random access token for a specific event with a given validity duration.
+// @Tags event-tokens
+// @Accept json
+// @Produce json
+// @Param slug path string true "Event Slug"
+// @Param request body event.GenerateTokenRequest true "Token duration payload"
+// @Success 201 {object} response.JSONResponse{data=event.EventAccessToken} "Successfully generated access token"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 404 {object} response.JSONResponse "Event not found"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
+// @Router /events/{slug}/tokens [post]
+func GenerateToken(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
+	}
+
+	event, err := GetEventBySlug(c.Context(), slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
+		}
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal memverifikasi event", err.Error())
+	}
+
+	reqBody := new(GenerateTokenRequest)
+	if err := c.Bind().JSON(reqBody); err != nil {
+		return res.Error(c, fiber.StatusBadRequest, "Format body salah", err.Error())
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(reqBody); err != nil {
+		return res.Error(c, fiber.ErrBadRequest.Code, "Validasi data gagal", err.Error())
+	}
+
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal membuat token acak", err.Error())
+	}
+	tokenStr := hex.EncodeToString(b)
+
+	expiresAt := time.Now().AddDate(0, 0, reqBody.DurationDays)
+
+	tokenRecord, err := InsertEventAccessToken(c.Context(), tokenStr, event.ID, expiresAt)
+	if err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal menyimpan token ke database", err.Error())
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(res.JSONResponse{
+		Status:  "success",
+		Message: "Token berhasil dibuat",
+		Data:    tokenRecord,
+	})
+}
+
+// ListTokens handles listing active access tokens for a specific event.
+// @Summary List active event tokens
+// @Description Retrieve a list of active (non-expired) access tokens for a specific event using its slug.
+// @Tags event-tokens
+// @Accept json
+// @Produce json
+// @Param slug path string true "Event Slug"
+// @Success 200 {object} response.JSONResponse{data=[]event.EventAccessToken} "Successfully retrieved active tokens"
+// @Failure 404 {object} response.JSONResponse "Event not found"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
+// @Router /events/{slug}/tokens [get]
+func ListTokens(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
+	}
+
+	_, err := GetEventBySlug(c.Context(), slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res.Error(c, fiber.StatusNotFound, "Event tidak ditemukan", err.Error())
+		}
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal memverifikasi event", err.Error())
+	}
+
+	tokens, err := GetActiveTokensByEventSlug(c.Context(), slug)
+	if err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal mengambil daftar token", err.Error())
+	}
+
+	return res.Success(c, "Berhasil mendapatkan daftar token", tokens, nil)
+}
+
+// RevokeToken handles deleting/revoking a specific access token.
+// @Summary Revoke access token
+// @Description Execute a hard delete on a specific access token from the database.
+// @Tags event-tokens
+// @Accept json
+// @Produce json
+// @Param slug path string true "Event Slug"
+// @Param token path string true "Access Token to revoke"
+// @Success 204 "No Content - token successfully deleted"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Security CookieAuth
+// @Router /events/{slug}/tokens/{token} [delete]
+func RevokeToken(c fiber.Ctx) error {
+	token := c.Params("token")
+	if token == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Token tidak boleh kosong", nil)
+	}
+
+	err := DeleteEventAccessToken(c.Context(), token)
+	if err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal menghapus token", err.Error())
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+

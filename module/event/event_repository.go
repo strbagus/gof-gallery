@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/strbagus/gof-gallery/internal/database"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 )
@@ -108,16 +110,6 @@ func CreateEvent(ctx context.Context, req *CreateRequest) error {
 	return err
 }
 
-func GetEventSaltBySlug(ctx context.Context, slug string) (string, bool, error) {
-	var salt string
-	var isPrivate bool
-	err := database.PgxPool.QueryRow(ctx, "select salt, is_private from public.events where slug = $1 and deleted_at is null", slug).Scan(&salt, &isPrivate)
-	if err != nil {
-		return "", false, err
-	}
-	return salt, isPrivate, nil
-}
-
 func GetEventBySlug(ctx context.Context, slug string) (EventDetailResponse, error) {
 	var item EventDetailResponse
 	query := `
@@ -148,3 +140,73 @@ func GetEventBySlug(ctx context.Context, slug string) (EventDetailResponse, erro
 	)
 	return item, err
 }
+
+func InsertEventAccessToken(ctx context.Context, token string, eventID int, expiresAt time.Time) (*EventAccessToken, error) {
+	var item EventAccessToken
+	query := `
+		insert into public.event_access_tokens (token, event_id, expires_at)
+		values ($1, $2, $3)
+		returning id, token, event_id, created_at, expires_at
+	`
+	err := database.PgxPool.QueryRow(ctx, query, token, eventID, expiresAt).Scan(
+		&item.ID,
+		&item.Token,
+		&item.EventID,
+		&item.CreatedAt,
+		&item.ExpiresAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func GetActiveTokensByEventSlug(ctx context.Context, slug string) ([]EventAccessToken, error) {
+	result := make([]EventAccessToken, 0)
+	query := `
+		select
+			eat.id,
+			eat.token,
+			eat.event_id,
+			eat.created_at,
+			eat.expires_at
+		from
+			public.event_access_tokens eat
+		join
+			public.events e on eat.event_id = e.id
+		where
+			e.slug = $1
+			and e.deleted_at is null
+			and eat.expires_at > now()
+		order by
+			eat.created_at desc
+	`
+	rows, err := database.PgxPool.Query(ctx, query, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item EventAccessToken
+		if err := rows.Scan(
+			&item.ID,
+			&item.Token,
+			&item.EventID,
+			&item.CreatedAt,
+			&item.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	return result, nil
+}
+
+func DeleteEventAccessToken(ctx context.Context, token string) error {
+	_, err := database.PgxPool.Exec(ctx, `
+		delete from public.event_access_tokens
+		where token = $1
+	`, token)
+	return err
+}
+

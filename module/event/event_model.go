@@ -37,11 +37,20 @@ type AccessKeyRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
-type AccessKeyResponse struct {
-	AccessKey string `json:"access_key"`
-}
-
 type ListEventRequest struct {
 	req.Pagination
 	IsPrivate *int `query:"is_private" validate:"omitempty,oneof=0 1"`
 }
+
+type EventAccessToken struct {
+	ID        int       `json:"id" db:"id"`
+	Token     string    `json:"token" db:"token"`
+	EventID   int       `json:"event_id" db:"event_id"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
+}
+
+type GenerateTokenRequest struct {
+	DurationDays int `json:"duration_days" validate:"required,min=1"`
+}
+
