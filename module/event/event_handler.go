@@ -2,7 +2,6 @@ package event
 
 import (
 	"errors"
-	req "github.com/strbagus/gof-gallery/pkg/request"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 	"slices"
 	"time"
@@ -24,12 +23,13 @@ import (
 // @Param search query string false "Search by name or slug"
 // @Param order_by query string false "Column to order by" default(created_at)
 // @Param order_dir query string false "Order direction (asc/desc)" default(desc)
+// @Param is_private query int false "Filter by privacy (0 for public, 1 for private)"
 // @Success 200 {object} response.JSONResponse{data=[]event.EventResponse,metadata=response.Metadata} "Successfully retrieved events"
 // @Failure 400 {object} response.JSONResponse "Bad request"
 // @Failure 500 {object} response.JSONResponse "Internal server error"
 // @Router /events [get]
 func ListEvent(c fiber.Ctx) error {
-	f := new(req.Pagination)
+	f := new(ListEventRequest)
 
 	if err := c.Bind().Query(f); err != nil {
 		return res.Error(c, fiber.StatusBadRequest, "Format parameter salah", err.Error())

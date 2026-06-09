@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/strbagus/gof-gallery/internal/database"
-	req "github.com/strbagus/gof-gallery/pkg/request"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 )
 
-func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, res.Metadata, error) {
+func GetListEvent(ctx context.Context, param *ListEventRequest) ([]EventResponse, res.Metadata, error) {
 	result := make([]EventResponse, 0)
 	var meta res.Metadata
 
@@ -18,6 +17,13 @@ func GetListEvent(ctx context.Context, param *req.Pagination) ([]EventResponse, 
 	if param.Search != "" {
 		whereClause += " and (e.name ilike $1 or e.slug ilike $1)"
 		filterArgs = append(filterArgs, "%"+param.Search+"%")
+	}
+
+	if param.IsPrivate != nil {
+		isPrivateVal := *param.IsPrivate == 1
+		placeholderIdx := len(filterArgs) + 1
+		whereClause += fmt.Sprintf(" and e.is_private = $%d", placeholderIdx)
+		filterArgs = append(filterArgs, isPrivateVal)
 	}
 
 	limitIdx := len(filterArgs) + 1

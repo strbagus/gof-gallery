@@ -2,6 +2,7 @@ package event
 
 import (
 	"time"
+	req "github.com/strbagus/gof-gallery/pkg/request"
 )
 
 type Event struct {
@@ -38,4 +39,9 @@ type AccessKeyRequest struct {
 
 type AccessKeyResponse struct {
 	AccessKey string `json:"access_key"`
+}
+
+type ListEventRequest struct {
+	req.Pagination
+	IsPrivate *int `query:"is_private" validate:"omitempty,oneof=0 1"`
 }
