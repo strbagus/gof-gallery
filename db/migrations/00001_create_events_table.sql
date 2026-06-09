@@ -8,7 +8,6 @@ CREATE TABLE events (
     date DATE,
     description TEXT,
     is_private BOOLEAN NOT NULL DEFAULT FALSE,
-    salt VARCHAR(32) NOT NULL DEFAULT md5(random()::text),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
