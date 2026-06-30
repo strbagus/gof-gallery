@@ -7,6 +7,7 @@ import (
 	"github.com/strbagus/gof-gallery/docs"
 	"github.com/strbagus/gof-gallery/internal/database"
 	"github.com/strbagus/gof-gallery/internal/middleware"
+	"github.com/strbagus/gof-gallery/internal/s3"
 	"github.com/strbagus/gof-gallery/router"
 
 	"github.com/gofiber/fiber/v3"
@@ -45,6 +46,8 @@ func main() {
 	database.InitPostgres()
 
 	defer database.ClosePostgres()
+
+	s3.InitS3()
 
 	middleware.InitUniAuth()
 
