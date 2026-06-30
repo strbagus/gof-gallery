@@ -7,8 +7,10 @@ import (
 
 func RegisterRoutes(router fiber.Router) {
 	app := router.Group("/photos")
-	app.Post("/", AddPhoto)
+	app.Get("/:slug", ListPhoto)
+
 
 	protected := app.Group("/", middleware.AdminMiddleware)
-	protected.Get("/:slug", ListPhoto)
+	protected.Post("/", AddPhoto)
+
 }
