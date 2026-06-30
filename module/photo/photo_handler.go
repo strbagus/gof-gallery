@@ -2,16 +2,18 @@ package photo
 
 import (
 	"errors"
+	"fmt"
+	"net/url"
 	"slices"
-	// "strings"
+	"time"
 
-	// "github.com/strbagus/gof-gallery/module/event"
+	"github.com/jackc/pgx/v5"
+	"github.com/strbagus/gof-gallery/internal/s3"
 	req "github.com/strbagus/gof-gallery/pkg/request"
 	res "github.com/strbagus/gof-gallery/pkg/response"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
-	// "github.com/golang-jwt/jwt/v5"
 )
 
 // ListPhoto handles listing photos for a specific event slug.
@@ -126,3 +128,58 @@ func AddPhoto(c fiber.Ctx) error {
 
 	return res.Success(c, "Berhasil menambahkan foto", nil, nil)
 }
+
+// GetOriginalPhoto handles generating a temporary S3 presigned URL for an original photo.
+// @Summary Get presigned URL for original photo
+// @Description Get a 15-minute temporary presigned URL for the original photo using event slug and preview filename.
+// @Tags photos
+// @Accept json
+// @Produce json
+// @Param slug path string true "Event Slug"
+// @Param preview path string true "Preview Filename"
+// @Success 200 {object} response.JSONResponse "Successfully generated link"
+// @Failure 400 {object} response.JSONResponse "Bad request"
+// @Failure 404 {object} response.JSONResponse "Photo not found"
+// @Failure 500 {object} response.JSONResponse "Internal server error"
+// @Router /photos/{slug}/original/{preview} [get]
+func GetOriginalPhoto(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	preview := c.Params("preview")
+
+	if slug == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Slug event tidak boleh kosong", nil)
+	}
+	if preview == "" {
+		return res.Error(c, fiber.StatusBadRequest, "Preview tidak boleh kosong", nil)
+	}
+
+	if s3.S3Client == nil {
+		return res.Error(c, fiber.StatusInternalServerError, "S3 client tidak terinisialisasi", nil)
+	}
+
+	photo, err := GetPhotoBySlugAndPreview(c.Context(), slug, preview)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res.Error(c, fiber.StatusNotFound, "Foto tidak ditemukan", err.Error())
+		}
+		return res.Error(c, fiber.StatusInternalServerError, "Terjadi kesalahan saat mencari foto", err.Error())
+	}
+
+	objectName := fmt.Sprintf("originals/%s/%s", photo.EventSlug, photo.Filename)
+
+	// Set content disposition to attachment to force browser download and set the filename
+	reqParams := make(url.Values)
+	reqParams.Set("response-content-disposition", fmt.Sprintf("attachment; filename=\"%s_%s\"", photo.EventSlug, photo.Filename))
+
+	// Generate temporary S3 presigned URL (15 minutes validity)
+	presignedURL, err := s3.S3Client.PresignedGetObject(c.Context(), s3.BucketName, objectName, 15*time.Minute, reqParams)
+	if err != nil {
+		return res.Error(c, fiber.StatusInternalServerError, "Gagal generate link S3", err.Error())
+	}
+
+	return res.Success(c, "Berhasil mendapatkan link foto original", fiber.Map{
+		"url":      presignedURL.String(),
+		"filename": fmt.Sprintf("%s_%s", photo.EventSlug, photo.Filename),
+	}, nil)
+}
+

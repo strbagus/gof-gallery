@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/strbagus/gof-gallery/internal/database"
-	req "github.com/strbagus/gof-gallery/pkg/request"
-	res "github.com/strbagus/gof-gallery/pkg/response"
+	req "github.com/strbagus/gof-gallery/pkg/request" res "github.com/strbagus/gof-gallery/pkg/response"
 )
 
 func GetListPhoto(ctx context.Context, slug string, param *req.Pagination) ([]string, res.Metadata, error) {
@@ -82,3 +81,28 @@ func CreatePhoto(ctx context.Context, req *CreatePhotoReq) error {
 
 	return err
 }
+
+// GetPhotoBySlugAndPreview retrieves a photo by event slug and preview filename
+func GetPhotoBySlugAndPreview(ctx context.Context, slug string, preview string) (*Photo, error) {
+	var item Photo
+	query := `
+		select 
+			p.event_slug, 
+			p.filename 
+		from 
+			public.photos p 
+		where 
+			p.event_slug = $1 
+			and p.preview = $2 
+		limit 1
+	`
+	err := database.PgxPool.QueryRow(ctx, query, slug, preview).Scan(
+		&item.EventSlug,
+		&item.Filename,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
