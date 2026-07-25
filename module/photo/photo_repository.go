@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/strbagus/gof-gallery/internal/database"
-	req "github.com/strbagus/gof-gallery/pkg/request" res "github.com/strbagus/gof-gallery/pkg/response"
+	req "github.com/strbagus/gof-gallery/pkg/request"
+	res "github.com/strbagus/gof-gallery/pkg/response"
 )
 
 func GetListPhoto(ctx context.Context, slug string, param *req.Pagination) ([]string, res.Metadata, error) {
